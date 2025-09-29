@@ -78,7 +78,8 @@ function getRemoteProductData($url, $payload)
     }
 }
 
-function fetchQuery($conn, $sql, $params) {
+function fetchQuery($conn, $sql, $params)
+{
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
@@ -191,50 +192,49 @@ else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($obj['party_name'])) {
             $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
             $payload = ['product_id' => $element['product_id'], 'company_id' => $compID];
             $productData = getRemoteProductData($remoteApiUrl, $payload);
-        
+
             if ($productData && isset($productData['status']) && $productData['status'] === 200 && isset($productData['data'])) {
                 $remoteProduct = $productData['data'];
                 $element['hsn_no'] = $remoteProduct['hsn_no'];
                 $element['item_code'] = $remoteProduct['product_code'];
                 // Prefer input name, fallback to API
-                $element['product_name'] = isset($element['product_name']) && $element['product_name'] !== '' 
-                                            ? $element['product_name'] 
-                                            : $remoteProduct['product_name'];
-                                            
+                $element['product_name'] = isset($element['product_name']) && $element['product_name'] !== ''
+                    ? $element['product_name']
+                    : $remoteProduct['product_name'];
             } else {
                 file_put_contents("debug_log.txt", "Product not found: product_id: " . $element['product_id'] . "\n", FILE_APPEND);
                 echo json_encode(['status' => 400, 'msg' => 'Product Details Not Found']);
                 exit();
             }
-        
+
             // Tax excluded amount calculation
             $qty = floatval($element['qty']);
             $price = floatval($element['price_unit']);
             $product_discount_amt = !empty($element['discount_amt']) ? floatval($element['discount_amt']) : 0;
             $element['without_tax_amount'] = ($qty * $price) - $product_discount_amt;
             $sum_total += $element['without_tax_amount'];
-        
+
             // Fetch unit name
             $sqlunit = "SELECT unit_name FROM unit WHERE unit_id = ? AND delete_at = 0";
             $unitData = fetchQuery($conn, $sqlunit, [$element['unit']]);
             if (!empty($unitData)) {
                 $element['unit_name'] = $unitData[0]['unit_name'];
             }
-        
+
             // Save back updated product to original array
             $product[$i] = $element;
         }
 
         $companyData = json_encode($companyDetailsresult[0]);
-       foreach ($product as $key => $pro) {
-    if (isset($pro['product_name']) && $pro['product_name'] !== null) {
-        $product[$key]['product_name'] = str_replace('"', '\"', $pro['product_name']);
-    }
-}
+        foreach ($product as $key => $pro) {
+            if (isset($pro['product_name']) && $pro['product_name'] !== null) {
+                $product[$key]['product_name'] = str_replace('"', '\"', $pro['product_name']);
+            }
+        }
 
-    
-       $product_json = json_encode($product, JSON_UNESCAPED_UNICODE);
-       
+
+        $product_json = json_encode($product, JSON_UNESCAPED_UNICODE);
+
         $billDate = date('Y-m-d', strtotime($bill_date));
 
         // Log the invoice data
@@ -319,58 +319,70 @@ else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($obj['party_name'])) {
             echo json_encode(['status' => 400, 'msg' => 'Invoice Update Failed']);
             exit();
         }
-// Check and create sales party if not exists
-if (!empty($mobile_number)) {
-    $checkPartySql = "SELECT id FROM sales_party WHERE mobile_number = ? AND company_id = ? AND delete_at = 0";
-    $checkPartyStmt = $conn->prepare($checkPartySql);
-    $checkPartyStmt->bind_param("ss", $mobile_number, $compID);
-    $checkPartyStmt->execute();
-    $checkPartyStmt->store_result();
-    
+        // Check and create sales party if not exists
+        if (!empty($mobile_number)) {
+            $checkPartySql = "SELECT id FROM sales_party WHERE mobile_number = ? AND company_id = ? AND delete_at = 0";
+            $checkPartyStmt = $conn->prepare($checkPartySql);
+            $checkPartyStmt->bind_param("ss", $mobile_number, $compID);
+            $checkPartyStmt->execute();
+            $checkPartyStmt->store_result();
 
-    if ($checkPartyStmt->num_rows === 0) {
-        $party_id = uniqueID("sales_party", $conn->insert_id + 1);
-        // Party not found, insert new
-        $insertPartySql = "INSERT INTO sales_party (company_id,party_id, party_name, mobile_number, alter_number, email, company_name, gst_no, billing_address, shipp_address, opening_balance, opening_date, ac_type, city, state, delete_at) 
+
+            if ($checkPartyStmt->num_rows === 0) {
+                $party_id = uniqueID("sales_party", $conn->insert_id + 1);
+                // Party not found, insert new
+                $insertPartySql = "INSERT INTO sales_party (company_id,party_id, party_name, mobile_number, alter_number, email, company_name, gst_no, billing_address, shipp_address, opening_balance, opening_date, ac_type, city, state, delete_at) 
         VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0')";
 
-        $stmtInsertParty = $conn->prepare($insertPartySql);
+                $stmtInsertParty = $conn->prepare($insertPartySql);
 
-        // You can adjust these variables or set defaults as per your form data
-        $alter_number = '';  // Set default or from $obj
-        $email = '';         // Set default or from $obj
-        $company_name = '';  // Set default or from $obj
-        $gst_no = '';        // Set default or from $obj
-        $billing_address = $address;  // Using invoice address
-        $shipp_address = $address;
-        $opening_balance = '0';
-        $opening_date = date('Y-m-d');
-        $ac_type = 'CR';  // Default account type
-        $city = '';           // Set default or from $obj
-        $state = $state_of_supply; // Using supply state
+                // You can adjust these variables or set defaults as per your form data
+                $alter_number = '';  // Set default or from $obj
+                $email = '';         // Set default or from $obj
+                $company_name = '';  // Set default or from $obj
+                $gst_no = '';        // Set default or from $obj
+                $billing_address = $address;  // Using invoice address
+                $shipp_address = $address;
+                $opening_balance = '0';
+                $opening_date = date('Y-m-d');
+                $ac_type = 'CR';  // Default account type
+                $city = '';           // Set default or from $obj
+                $state = $state_of_supply; // Using supply state
 
-        $stmtInsertParty->bind_param(
-            "sssssssssssssss", 
-            $compID,$party_id, $party_name, $mobile_number, $alter_number, $email, 
-            $company_name, $gst_no, $billing_address, $shipp_address, 
-            $opening_balance, $opening_date, $ac_type, $city, $state
-        );
+                $stmtInsertParty->bind_param(
+                    "sssssssssssssss",
+                    $compID,
+                    $party_id,
+                    $party_name,
+                    $mobile_number,
+                    $alter_number,
+                    $email,
+                    $company_name,
+                    $gst_no,
+                    $billing_address,
+                    $shipp_address,
+                    $opening_balance,
+                    $opening_date,
+                    $ac_type,
+                    $city,
+                    $state
+                );
 
-        if ($stmtInsertParty->execute()) {
-            file_put_contents("debug_log.txt", "Sales party created for mobile: $mobile_number\n", FILE_APPEND);
+                if ($stmtInsertParty->execute()) {
+                    file_put_contents("debug_log.txt", "Sales party created for mobile: $mobile_number\n", FILE_APPEND);
+                } else {
+                    file_put_contents("debug_log.txt", "Sales party creation failed: " . $stmtInsertParty->error . "\n", FILE_APPEND);
+                }
+
+                $stmtInsertParty->close();
+            } else {
+                file_put_contents("debug_log.txt", "Sales party already exists for mobile: $mobile_number\n", FILE_APPEND);
+            }
+
+            $checkPartyStmt->close();
         } else {
-            file_put_contents("debug_log.txt", "Sales party creation failed: " . $stmtInsertParty->error . "\n", FILE_APPEND);
+            file_put_contents("debug_log.txt", "Mobile number is missing. Party creation skipped.\n", FILE_APPEND);
         }
-
-        $stmtInsertParty->close();
-    } else {
-        file_put_contents("debug_log.txt", "Sales party already exists for mobile: $mobile_number\n", FILE_APPEND);
-    }
-
-    $checkPartyStmt->close();
-} else {
-    file_put_contents("debug_log.txt", "Mobile number is missing. Party creation skipped.\n", FILE_APPEND);
-}
 
         // Update product stock and log stock history
         foreach ($product as $element) {
@@ -378,26 +390,24 @@ if (!empty($mobile_number)) {
             $quantity = (int) $element['qty'];
 
 
- $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
+            $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
 
-// Prepare payload
-$payload = [
-    'product_id' => $element['product_id'],
-    'company_id' => $compID
-];
+            // Prepare payload
+            $payload = [
+                'product_id' => $element['product_id'],
+                'company_id' => $compID
+            ];
 
-// Call remote API
-$productData = getRemoteProductData($remoteApiUrl, $payload);
-$quantity_purchased = 0;
- if ($productData && isset($productData['status']) && $productData['status'] === 200 && isset($productData['data'])) {
-                    
-    $remoteProduct = $productData['data'];
+            // Call remote API
+            $productData = getRemoteProductData($remoteApiUrl, $payload);
+            $quantity_purchased = 0;
+            if ($productData && isset($productData['status']) && $productData['status'] === 200 && isset($productData['data'])) {
 
-    $quantity_purchased = (int)$remoteProduct['crt_stock'] - $quantity;
+                $remoteProduct = $productData['data'];
 
-   
- }
-             $remotePayload = [
+                $quantity_purchased = (int)$remoteProduct['crt_stock'] - $quantity;
+            }
+            $remotePayload = [
                 'product_id' => $element['product_id'],
                 'company_id' => $compID,
                 'crt_stock' => $quantity_purchased,
@@ -417,21 +427,20 @@ $quantity_purchased = 0;
             }
 
             // Log stock history
-           $stockSql = "INSERT INTO stock_history (stock_type, bill_no, product_id, product_name, quantity, company_id, bill_id) 
+            $stockSql = "INSERT INTO stock_history (stock_type, bill_no, product_id, product_name, quantity, company_id, bill_id) 
              VALUES (?, ?, ?, ?, ?, ?, ?)";
-$stmtStock = $conn->prepare($stockSql);
-$stmtStock->bind_param("sssdsis", $stock_type, $bill_no, $productId, $product_name, $quantity, $compID, $uniqueID);
+            $stmtStock = $conn->prepare($stockSql);
+            $stmtStock->bind_param("sssdsis", $stock_type, $bill_no, $productId, $product_name, $quantity, $compID, $uniqueID);
 
-$stock_type = 'STACKOUT';
-$product_name = $element['product_name'];
+            $stock_type = 'STACKOUT';
+            $product_name = $element['product_name'];
 
-if ($stmtStock->execute()) {
-    // Success
-} else {
-    echo json_encode(['status' => 400, 'msg' => 'Stock History Insertion Failed: ' . $stmtStock->error]);
-    exit();
-}
-
+            if ($stmtStock->execute()) {
+                // Success
+            } else {
+                echo json_encode(['status' => 400, 'msg' => 'Stock History Insertion Failed: ' . $stmtStock->error]);
+                exit();
+            }
         }
 
         echo json_encode([
@@ -478,7 +487,7 @@ else if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
     $gst_amount = isset($obj['gst_amount']) && $obj['gst_amount'] !== '' ? $obj['gst_amount'] : 0;
     $remark = isset($obj['remark']) && $obj['remark'] !== '' ? $obj['remark'] : '';
     $payment_method_json = json_encode($payment_method, true);
-    
+
 
     // Validate required fields
     if (!$invoice_id) {
@@ -504,26 +513,26 @@ else if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
     //Revert the stock changes made by the old invoice
     foreach ($oldProductList as $oldProduct) {
         $oldQty = (int) $oldProduct['qty'];
-        
+
         $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
 
-// Prepare payload
-$payload = [
-    'product_id' => $oldProduct['product_id'],
-    'company_id' => $compID
-];
+        // Prepare payload
+        $payload = [
+            'product_id' => $oldProduct['product_id'],
+            'company_id' => $compID
+        ];
 
-// Call remote API
-$productData = getRemoteProductData($remoteApiUrl, $payload);
-$quantity_purchased = 0;
- if ($productData && isset($productData['status']) && $productData['status'] === 200 && isset($productData['data'])) {
-                    
-    $remoteProduct = $productData['data'];
+        // Call remote API
+        $productData = getRemoteProductData($remoteApiUrl, $payload);
+        $quantity_purchased = 0;
+        if ($productData && isset($productData['status']) && $productData['status'] === 200 && isset($productData['data'])) {
 
-    $quantity_purchased = (int)$remoteProduct['crt_stock'] + $oldQty;
+            $remoteProduct = $productData['data'];
+
+            $quantity_purchased = (int)$remoteProduct['crt_stock'] + $oldQty;
 
 
-$remotePayload = [
+            $remotePayload = [
                 'product_id' => $oldProduct['product_id'],
                 'company_id' => $compID,
                 'crt_stock' => $quantity_purchased,
@@ -540,38 +549,33 @@ $remotePayload = [
                 // Log error or take corrective action
                 error_log("Remote stock update failed for product_id: " . $element['product_id'] . " — " . $apiResponse['error']);
             }
-
-   
- }
-       
-    }
-    
-    
-    // In the PUT section
-        $sum_total = 0;
-        foreach ($product as &$element) {
-            
-            $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
-
-            // Prepare payload
-            $payload = [
-                'product_id' => $element['product_id'],
-                'company_id' => $compID
-            ];
-            
-            // Call remote API
-            $productData = getRemoteProductData($remoteApiUrl, $payload);
-                      
-                        
-             $remoteProduct = $productData['data'];
-             
-            $element['without_tax_amount'] = (floatval($element['qty']) * floatval($element['price_unit'])) - (empty($element['discount_amt']) ? 0 : floatval($element['discount_amt']));
-            $sum_total += $element['without_tax_amount'];
-            $element['product_name'] = $remoteProduct['product_name'];
-            
-            
         }
-        $product_json = json_encode($product);
+    }
+
+
+    // In the PUT section
+    $sum_total = 0;
+    foreach ($product as &$element) {
+
+        $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
+
+        // Prepare payload
+        $payload = [
+            'product_id' => $element['product_id'],
+            'company_id' => $compID
+        ];
+
+        // Call remote API
+        $productData = getRemoteProductData($remoteApiUrl, $payload);
+
+
+        $remoteProduct = $productData['data'];
+
+        $element['without_tax_amount'] = (floatval($element['qty']) * floatval($element['price_unit'])) - (empty($element['discount_amt']) ? 0 : floatval($element['discount_amt']));
+        $sum_total += $element['without_tax_amount'];
+        $element['product_name'] = $remoteProduct['product_name'];
+    }
+    $product_json = json_encode($product);
 
     // Update the invoice details
     $product_json = json_encode($product);
@@ -622,27 +626,27 @@ $remotePayload = [
     foreach ($product as $newProduct) {
         $productId = $newProduct['product_id'];
         $quantity = (int) $newProduct['qty'];
-      
-        
-         $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
-
-// Prepare payload
-$payload = [
-    'product_id' => $productId,
-    'company_id' => $compID
-];
-
-// Call remote API
-$productData = getRemoteProductData($remoteApiUrl, $payload);
-$quantity_purchased = 0;
- if ($productData && isset($productData['status']) && $productData['status'] === 200 && isset($productData['data'])) {
-                    
-    $remoteProduct = $productData['data'];
-
-    $quantity_purchased = (int)$remoteProduct['crt_stock'] - $quantity;
 
 
-$remotePayload = [
+        $remoteApiUrl = "https://pothigaicrackers.com/api/get_product_details.php";
+
+        // Prepare payload
+        $payload = [
+            'product_id' => $productId,
+            'company_id' => $compID
+        ];
+
+        // Call remote API
+        $productData = getRemoteProductData($remoteApiUrl, $payload);
+        $quantity_purchased = 0;
+        if ($productData && isset($productData['status']) && $productData['status'] === 200 && isset($productData['data'])) {
+
+            $remoteProduct = $productData['data'];
+
+            $quantity_purchased = (int)$remoteProduct['crt_stock'] - $quantity;
+
+
+            $remotePayload = [
                 'product_id' => $productId,
                 'company_id' => $compID,
                 'crt_stock' => $quantity_purchased,
@@ -659,16 +663,13 @@ $remotePayload = [
                 // Log error or take corrective action
                 error_log("Remote stock update failed for product_id: " . $element['product_id'] . " — " . $apiResponse['error']);
             }
+        }
 
-   
- }
-       
-    
 
-            // Log stock history
-            $stockSql = "INSERT INTO stock_history (stock_type, product_id, quantity, company_id, bill_id) VALUES (?, ?, ?, ?, ?)";
-            fetchQuery($conn, $stockSql, ['STACKOUT', $productId, $quantity, $compID, $invoice_id]);
-       
+
+        // Log stock history
+        $stockSql = "INSERT INTO stock_history (stock_type, product_id, quantity, company_id, bill_id) VALUES (?, ?, ?, ?, ?)";
+        fetchQuery($conn, $stockSql, ['STACKOUT', $productId, $quantity, $compID, $invoice_id]);
     }
 
     $output = [
@@ -676,7 +677,7 @@ $remotePayload = [
         'msg' => 'Invoice Updated Successfully',
         'data' => ['invoice_id' => $invoice_id]
     ];
-     echo json_encode($output);
+    echo json_encode($output);
     exit;
 }
 
@@ -716,4 +717,3 @@ else if ($_SERVER['REQUEST_METHOD'] == 'DELETE') {
 }
 
 echo json_encode($output);
-?>
