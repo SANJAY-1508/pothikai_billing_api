@@ -17,7 +17,8 @@ $output = array();
 $compID = $_GET['id'];
 date_default_timezone_set('Asia/Calcutta');
 
-function fetchQuery($conn, $sql, $params) {
+function fetchQuery($conn, $sql, $params)
+{
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
@@ -301,7 +302,7 @@ else if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
     $bill_date = $obj['bill_date'] ?? null;
     $product = $obj['product'] ?? null;
     $eway_no = $obj['eway_no'] ?? '';
-    $vechile_no = $obj['vechile_no'] ?? ''; 
+    $vechile_no = $obj['vechile_no'] ?? '';
     $address = $obj['address'] ?? '';
     $mobile_number = $obj['mobile_number'] ?? '';
     $total = $obj['total'] ?? null;
@@ -370,7 +371,7 @@ else if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
         $billDate,
         $product_json,
         $eway_no,
-        $vechile_no, 
+        $vechile_no,
         $address,
         $mobile_number,
         $total,
@@ -439,11 +440,11 @@ else if ($_SERVER['REQUEST_METHOD'] == 'DELETE') {
             $stmt->close();
         }
     }
-}// Convert Sales Estimations to Invoices
+} // Convert Sales Estimations to Invoices
 // Convert Sales Estimations to Invoices
 else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($obj['sales_estimation_ids'])) {
     $sales_estimation_ids = $obj['sales_estimation_ids'];
-    
+
     if (!is_array($sales_estimation_ids) || empty($sales_estimation_ids)) {
         $output = ['status' => 400, 'msg' => 'Invalid or empty sales estimation IDs'];
         echo json_encode($output);
@@ -506,8 +507,8 @@ else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($obj['sales_estimation_id
                 $element['hsn_no'] = $remoteProduct['hsn_no'];
                 $element['item_code'] = $remoteProduct['product_code'];
                 // Prefer input name, fallback to API
-                $element['product_name'] = isset($element['product_name']) && $element['product_name'] !== '' 
-                    ? $element['product_name'] 
+                $element['product_name'] = isset($element['product_name']) && $element['product_name'] !== ''
+                    ? $element['product_name']
                     : $remoteProduct['product_name'];
             } else {
                 file_put_contents("debug_log.txt", "Product not found during conversion: product_id: " . $element['product_id'] . "\n", FILE_APPEND);
@@ -532,7 +533,7 @@ else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($obj['sales_estimation_id
             $product_json,
             $estimation['sub_total'],
             $estimation['discount'],
-              $estimation['discount_amount'],
+            $estimation['discount_amount'],
             $estimation['discount_type'],
             $estimation['total'],
             $estimation['sum_total'],
@@ -643,9 +644,21 @@ else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($obj['sales_estimation_id
 
                         $stmtInsertParty->bind_param(
                             "sssssssssssssss",
-                            $compID, $party_id, $estimation['party_name'], $estimation['mobile_number'], $alter_number, $email,
-                            $company_name, $gst_no, $billing_address, $shipp_address,
-                            $opening_balance, $opening_date, $ac_type, $city, $state
+                            $compID,
+                            $party_id,
+                            $estimation['party_name'],
+                            $estimation['mobile_number'],
+                            $alter_number,
+                            $email,
+                            $company_name,
+                            $gst_no,
+                            $billing_address,
+                            $shipp_address,
+                            $opening_balance,
+                            $opening_date,
+                            $ac_type,
+                            $city,
+                            $state
                         );
 
                         if ($stmtInsertParty->execute()) {
@@ -694,10 +707,9 @@ else if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($obj['sales_estimation_id
     }
     echo json_encode($output);
     exit;
-}else {
+} else {
     $output['status'] = 400;
     $output['msg'] = 'Invalid Request Method';
 }
 
 echo json_encode($output);
-?>
